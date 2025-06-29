@@ -314,3 +314,26 @@ window.addLogEntry = async function(searchTerm, result, status) {
   await originalAddLogEntry(searchTerm, result, status);
   updateLogCount();
 };
+// Check for NFC support
+if ('NDEFReader' in window) {
+  const nfcReader = new NDEFReader();
+  document.getElementById('nfcButton').addEventListener('click', async () => {
+    try {
+      await nfcReader.scan();
+      nfcReader.onreading = event => {
+        const decoder = new TextDecoder();
+        for (const record of event.message.records) {
+          // Assuming your NFC tag stores the ITS_ID as text
+          const nfcValue = decoder.decode(record.data);
+          document.getElementById('searchInput').value = nfcValue;
+          searchSheet(); // Call your existing search function
+        }
+      };
+      alert("Ready to scan NFC tag. Please tap your NFC card.");
+    } catch (error) {
+      alert("NFC Scan failed: " + error);
+    }
+  });
+} else {
+  alert("NFC not supported on this device/browser.");
+}
