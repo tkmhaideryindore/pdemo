@@ -314,10 +314,16 @@ window.addLogEntry = async function(searchTerm, result, status) {
   await originalAddLogEntry(searchTerm, result, status);
   updateLogCount();
 };
-// Check for NFC support
+// Check for NFC support and manage scan state to prevent InvalidStateError
+let nfcScanning = false;
+const nfcButton = document.getElementById('nfcButton');
+
 if ('NDEFReader' in window) {
   const nfcReader = new NDEFReader();
-  document.getElementById('nfcButton').addEventListener('click', async () => {
+  nfcButton.addEventListener('click', async () => {
+    if (nfcScanning) return; // Prevent double scan
+    nfcScanning = true;
+    nfcButton.disabled = true; // Disable button to prevent more clicks
     try {
       await nfcReader.scan();
       nfcReader.onreading = event => {
@@ -328,10 +334,20 @@ if ('NDEFReader' in window) {
           document.getElementById('searchInput').value = nfcValue;
           searchSheet(); // Call your existing search function
         }
+        // Finish scanning, re-enable button
+        nfcScanning = false;
+        nfcButton.disabled = false;
+      };
+      nfcReader.onerror = () => {
+        // In case of NFC error, re-enable button
+        nfcScanning = false;
+        nfcButton.disabled = false;
       };
       alert("Ready to scan NFC tag. Please tap your NFC card.");
     } catch (error) {
       alert("NFC Scan failed: " + error);
+      nfcScanning = false;
+      nfcButton.disabled = false;
     }
   });
 } else {
