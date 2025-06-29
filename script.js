@@ -315,41 +315,31 @@ window.addLogEntry = async function(searchTerm, result, status) {
   updateLogCount();
 };
 // Check for NFC support and manage scan state to prevent InvalidStateError
-let nfcScanning = false;
-const nfcButton = document.getElementById('nfcButton');
-
-if ('NDEFReader' in window) {
-  const nfcReader = new NDEFReader();
-  nfcButton.addEventListener('click', async () => {
-    if (nfcScanning) return; // Prevent double scan
-    nfcScanning = true;
-    nfcButton.disabled = true; // Disable button to prevent more clicks
+async function startNFC() {
+  if ('NDEFReader' in window) {
+    const reader = new NDEFReader();
     try {
-      await nfcReader.scan();
-      nfcReader.onreading = event => {
-        const decoder = new TextDecoder();
-        for (const record of event.message.records) {
-          // Assuming your NFC tag stores the ITS_ID as text
-          const nfcValue = decoder.decode(record.data);
-          document.getElementById('searchInput').value = nfcValue;
-          searchSheet(); // Call your existing search function
+      await reader.scan();
+      console.log("NFC reader is ready. Tap a card.");
+      reader.onreading = event => {
+        const message = event.message;
+        for (const record of message.records) {
+          if (record.recordType === "text") {
+            const textDecoder = new TextDecoder(record.encoding || "utf-8");
+            const itsId = textDecoder.decode(record.data);
+            console.log("NFC Data:", itsId);
+
+            // Auto-fill the input and trigger search
+            document.getElementById("searchInput").value = itsId;
+            searchSheet();
+          }
         }
-        // Finish scanning, re-enable button
-        nfcScanning = false;
-        nfcButton.disabled = false;
       };
-      nfcReader.onerror = () => {
-        // In case of NFC error, re-enable button
-        nfcScanning = false;
-        nfcButton.disabled = false;
-      };
-      alert("Ready to scan NFC tag. Please tap your NFC card.");
     } catch (error) {
-      alert("NFC Scan failed: " + error);
-      nfcScanning = false;
-      nfcButton.disabled = false;
+      console.error("NFC scan failed:", error);
+      alert("NFC scan failed or is not supported on this device/browser.");
     }
-  });
-} else {
-  alert("NFC not supported on this device/browser.");
+  } else {
+    alert("NFC not supported in this browser.");
+  }
 }
